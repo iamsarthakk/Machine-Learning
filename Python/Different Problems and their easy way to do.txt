@@ -1,0 +1,9 @@
+1. Recommendation based ML project: Use Amazone AWS "desstne" api
+2. For ML chatbot: Use "Torch" deep learing library using "Lua" programing language using LSTM model or use api.ai API. 
+3. An AI reader (bot that can understand language) using google's Parsey McParseface and API.ai api. Google's SyntexNet is a syntectic parser
+   for any language.
+4. AI writer using deep learning library Lasagne. 
+5. One-Shot Learning(ML with small data) with Memory Augmented Neural Networks:
+6. Yone analysis in Node.js using IBM watson api (Cloud service IBM Bluemix)
+7. Generate Rap Lyrics using "Hidden Markov Model"
+

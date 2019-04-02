@@ -1,0 +1,4 @@
+1. Restricted Boltzman Machine
+2. Encoder-Decoder
+3. LSTM
+4. CNN
