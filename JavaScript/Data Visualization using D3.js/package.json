@@ -1,0 +1,18 @@
+{
+  "name": "dataviz",
+  "version": "1.0.0",
+  "description": "A project to visualise kaggle titanic dataset using D3.js",
+  "main": "d3.v3.min.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [
+    "d3",
+    "dataviz"
+  ],
+  "author": "Sarthak Kumar",
+  "license": "ISC",
+  "dependencies": {
+    "express": "^4.16.4"
+  }
+}

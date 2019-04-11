@@ -1,4 +1,4 @@
-1. Recommendation based ML project: Use Amazone AWS "desstne" api
+1. Recommendation based ML project: Use Amazone AWS "desstne" api, Lightfm python module
 2. For ML chatbot: Use "Torch" deep learing library using "Lua" programing language using LSTM model or use api.ai API. 
 3. An AI reader (bot that can understand language) using google's Parsey McParseface and API.ai api. Google's SyntexNet is a syntectic parser
    for any language.
