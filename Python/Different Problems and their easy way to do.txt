@@ -6,4 +6,5 @@
 5. One-Shot Learning(ML with small data) with Memory Augmented Neural Networks:
 6. Yone analysis in Node.js using IBM watson api (Cloud service IBM Bluemix)
 7. Generate Rap Lyrics using "Hidden Markov Model"
+8. TPOT(build on top of scikit-learn) for genetic algorithms
 
