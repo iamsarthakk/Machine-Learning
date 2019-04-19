@@ -1,109 +1,125 @@
-import numpy as np
-import matplotlib.pyplot as plt
-import pickle
-from scipy.stats import truncnorm
+from __future__ import print_function
 
-image_size = 28 # width and length
-no_of_different_labels = 10 #  i.e. 0, 1, 2, 3, ..., 9
-image_pixels = image_size * image_size
-train_data = np.loadtxt("mnist_train.csv", delimiter=",")
-test_data = np.loadtxt("mnist_test.csv", delimiter=",")
+import tensorflow as tf
 
-#Map Image data between 0.01 to 0.99 (previously 0 to 255)
-fac = 255  *0.99 + 0.01
-train_imgs = np.asfarray(train_data[:, 1:]) / fac
-test_imgs = np.asfarray(test_data[:, 1:]) / fac
-train_labels = np.asfarray(train_data[:, :1])
-test_labels = np.asfarray(test_data[:, :1])
+# Import MNIST data
+from tensorflow.examples.tutorials.mnist import input_data
+mnist = input_data.read_data_sets("/tmp/data/", one_hot=True)
 
-lr = np.arange(no_of_different_labels)
-# transform labels into one hot representation eg. one hot representation of 0: [1 0 0 0 0 0 0 0 0 0]
-train_labels_one_hot = (lr==train_labels).astype(np.float)
-test_labels_one_hot = (lr==test_labels).astype(np.float)
-# we don't want zeroes and ones in the labels neither:
-train_labels_one_hot[train_labels_one_hot==0] = 0.01
-train_labels_one_hot[train_labels_one_hot==1] = 0.99
-test_labels_one_hot[test_labels_one_hot==0] = 0.01
-test_labels_one_hot[test_labels_one_hot==1] = 0.99
+# Parameters
+learning_rate = 0.001
+training_iters = 200000
+batch_size = 128
+display_step = 10
 
-# for i in range(10):
-#     img = train_imgs[i].reshape((28,28))
-#     plt.imshow(img, cmap="Greys")
-#     plt.show()
+# Network Parameters
+n_input = 784 # MNIST data input (img shape: 28*28)
+n_classes = 10 # MNIST total classes (0-9 digits)
+dropout = 0.75 # Dropout, probability to keep units
 
-def truncated_normal(mean=0, sd=1, low=0, upp=10):
-    return truncnorm((low - mean) / sd, (upp - mean) / sd, loc=mean, scale=sd)
-
-def sig(x):
-    return 1/(1+np.exp(-x))
-
-class NeuralNetwork:
-
-    def __init__(self, no_in_nodes, no_out_nodes, no_hidden_nodes,lr):
-        self.no_in_nodes = no_in_nodes;
-        self.no_out_nodes = no_out_nodes;
-        self.no_hidden_nodes = no_hidden_nodes;
-        self.lr = lr;
-        self.create_weight_matrix();
-
-    def create_weight_matrix(self):
-        rad = 1/np.sqrt(self.no_in_nodes)
-        X = truncated_normal(0, 1, -rad, rad)
-        self.wih = X.rvs((self.no_hidden_nodes, self.no_in_nodes))
-
-        rad = 1/np.sqrt(self.no_hidden_nodes)
-        X = truncated_normal(0, 1, -rad, rad)
-        self.who = X.rvs((self.no_out_nodes, self.no_hidden_nodes))
-
-    def train(self, input, target):
-        input = np.array(input).T
-        target = np.array(target).T
-
-        out1 = sig(np.dot(self.wih, input))
-        out2 = sig(np.dot(self.who, out1))
-
-        error = target - out2
-
-        #update weights
-        tmp = error * out2 * (1.0-out2)
-        tmp = self.lr*np.dot(tmp,out1.T)
-        self.who += tmp;
-
-        hidden_error = np.dot(self.who.T, error)
-        tmp = hidden_error * out1 * (1.0-out1)
-        tmp = self.lr*np.dot(tmp, input.T)
-        self.wih += tmp
+# tf Graph input
+x = tf.placeholder(tf.float32, [None, n_input])
+y = tf.placeholder(tf.float32, [None, n_classes])
+keep_prob = tf.placeholder(tf.float32) #dropout (keep probability)
 
 
+# Create some wrappers for simplicity
+def conv2d(x, W, b, strides=1):
+    # Conv2D wrapper, with bias and relu activation
+    x = tf.nn.conv2d(x, W, strides=[1, strides, strides, 1], padding='SAME')
+    x = tf.nn.bias_add(x, b)
+    return tf.nn.relu(x)
 
-    def run(self, input):
-        input = np.array(input).T
-        out = sig(np.dot(self.wih, input))
-        out = sig(np.dot(self.who, out))
-        return out
+
+def maxpool2d(x, k=2):
+    # MaxPool2D wrapper
+    return tf.nn.max_pool(x, ksize=[1, k, k, 1], strides=[1, k, k, 1],
+                          padding='SAME')
 
 
-    def evaluate(self, data, labels):
-        corrects, wrongs = 0, 0
-        for i in range(len(data)):
-            res = self.run(data[i])
-            res_max = res.argmax()
-            if res_max == labels[i]:
-                corrects += 1
-            else:
-                wrongs += 1
-        return corrects, wrongs
+# Create model
+def conv_net(x, weights, biases, dropout):
+    # Reshape input picture
+    x = tf.reshape(x, shape=[-1, 28, 28, 1])
 
-ANN = NeuralNetwork(no_in_nodes = 784, no_out_nodes = 10, no_hidden_nodes = 100, lr = 0.1)
+    # Convolution Layer
+    conv1 = conv2d(x, weights['wc1'], biases['bc1'])
+    # Max Pooling (down-sampling)
+    conv1 = maxpool2d(conv1, k=2)
 
-for i in range(len(train_imgs)):
-    ANN.train(train_imgs[i], train_labels_one_hot[i])
+    # Convolution Layer
+    conv2 = conv2d(conv1, weights['wc2'], biases['bc2'])
+    # Max Pooling (down-sampling)
+    conv2 = maxpool2d(conv2, k=2)
 
-for i in range(20):
-    res = ANN.run(test_imgs[i])
-    print(test_labels[i], np.argmax(res), np.max(res))
+    # Fully connected layer
+    # Reshape conv2 output to fit fully connected layer input
+    fc1 = tf.reshape(conv2, [-1, weights['wd1'].get_shape().as_list()[0]])
+    fc1 = tf.add(tf.matmul(fc1, weights['wd1']), biases['bd1'])
+    fc1 = tf.nn.relu(fc1)
+    # Apply Dropout
+    fc1 = tf.nn.dropout(fc1, dropout)
 
-corrects, wrongs = ANN.evaluate(train_imgs, train_labels)
-print("accruracy train: ", corrects / ( corrects + wrongs))
-corrects, wrongs = ANN.evaluate(test_imgs, test_labels)
-print("accruracy: test", corrects / ( corrects + wrongs))
+    # Output, class prediction
+    out = tf.add(tf.matmul(fc1, weights['out']), biases['out'])
+    return out
+
+# Store layers weight & bias
+weights = {
+    # 5x5 conv, 1 input, 32 outputs
+    'wc1': tf.Variable(tf.random_normal([5, 5, 1, 32])),
+    # 5x5 conv, 32 inputs, 64 outputs
+    'wc2': tf.Variable(tf.random_normal([5, 5, 32, 64])),
+    # fully connected, 7*7*64 inputs, 1024 outputs
+    'wd1': tf.Variable(tf.random_normal([7*7*64, 1024])),
+    # 1024 inputs, 10 outputs (class prediction)
+    'out': tf.Variable(tf.random_normal([1024, n_classes]))
+}
+
+biases = {
+    'bc1': tf.Variable(tf.random_normal([32])),
+    'bc2': tf.Variable(tf.random_normal([64])),
+    'bd1': tf.Variable(tf.random_normal([1024])),
+    'out': tf.Variable(tf.random_normal([n_classes]))
+}
+
+# Construct model
+pred = conv_net(x, weights, biases, keep_prob)
+
+# Define loss and optimizer
+cost = tf.reduce_mean(tf.nn.softmax_cross_entropy_with_logits(logits = pred, labels = y))
+optimizer = tf.train.AdamOptimizer(learning_rate=learning_rate).minimize(cost)
+
+# Evaluate model
+correct_pred = tf.equal(tf.argmax(pred, 1), tf.argmax(y, 1))
+accuracy = tf.reduce_mean(tf.cast(correct_pred, tf.float32))
+
+# Initializing the variables
+init = tf.initialize_all_variables()
+
+# Launch the graph
+with tf.Session() as sess:
+    sess.run(init)
+    step = 1
+    # Keep training until reach max iterations
+    while step * batch_size < training_iters:
+        batch_x, batch_y = mnist.train.next_batch(batch_size)
+        # Run optimization op (backprop)
+        sess.run(optimizer, feed_dict={x: batch_x, y: batch_y,
+                                       keep_prob: dropout})
+        if step % display_step == 0:
+            # Calculate batch loss and accuracy
+            loss, acc = sess.run([cost, accuracy], feed_dict={x: batch_x,
+                                                              y: batch_y,
+                                                              keep_prob: 1.})
+            print("Iter " + str(step*batch_size) + ", Minibatch Loss= " + \
+                  "{:.6f}".format(loss) + ", Training Accuracy= " + \
+                  "{:.5f}".format(acc))
+        step += 1
+    print("Optimization Finished!")
+
+    # Calculate accuracy for 256 mnist test images
+    print("Testing Accuracy:", \
+        sess.run(accuracy, feed_dict={x: mnist.test.images[:256],
+                                      y: mnist.test.labels[:256],
+                                      keep_prob: 1.}))
