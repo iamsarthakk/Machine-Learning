@@ -1,9 +1,3 @@
-// Daniel Shiffman
-// Nature of Code: Intelligence and Learning
-// https://github.com/shiffman/NOC-S17-2-Intelligence-Learning
-
-// This flappy bird implementation is adapted from:
-// https://youtu.be/cXgA1d_E-jY&
 
 // Mutation function to be passed into bird.brain
 function mutate(x) {
