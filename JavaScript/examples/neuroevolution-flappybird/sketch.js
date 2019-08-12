@@ -1,9 +1,3 @@
-// Daniel Shiffman
-// Nature of Code: Intelligence and Learning
-// https://github.com/shiffman/NOC-S18
-
-// This flappy bird implementation is adapted from:
-// https://youtu.be/cXgA1d_E-jY&
 
 // How big is the population
 let totalPopulation = 500;
