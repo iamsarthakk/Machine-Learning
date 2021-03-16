@@ -1,241 +1,191 @@
-// Daniel Shiffman
-// Nature of Code 2018
-// https://github.com/shiffman/NOC-S18
+var mr = 0.01;
 
-// Evolutionary "Steering Behavior" Simulation
+function Vehicle(x, y, dna) {
+  this.acceleration = createVector(0, 0);
+  this.velocity = createVector(0, -2);
+  this.position = createVector(x, y);
+  this.r = 4;
+  this.maxspeed = 5;
+  this.maxforce = 0.5;
 
+  this.health = 1;
 
-// Mutation function to be passed into Vehicle's brain
-function mutate(x) {
-  if (random(1) < 0.1) {
-    let offset = randomGaussian() * 0.5;
-    let newx = x + offset;
-    return newx;
+  this.dna = [];
+  if (dna === undefined) {
+    // Food weight
+    this.dna[0] = random(-2, 2);
+    // Poison weight
+    this.dna[1] = random(-2, 2);
+    // Food perception
+    this.dna[2] = random(0, 100);
+    // Poision Percepton
+    this.dna[3] = random(0, 100);
   } else {
-    return x;
-  }
-}
-
-// This is a class for an individual sensor
-// Each vehicle will have N sensors
-class Sensor {
-  constructor(angle) {
-    // The vector describes the sensor's direction
-    this.dir = p5.Vector.fromAngle(angle);
-    // This is the sensor's reading
-    this.val = 0;
-  }
-}
-
-// This is the class for each Vehicle
-class Vehicle {
-  // A vehicle can be from a "brain" (Neural Network)
-  constructor(brain) {
-
-    // All the physics stuff
-    this.acceleration = createVector();
-    this.velocity = createVector();
-    this.position = createVector(random(width), random(height));
-    this.r = 4;
-    this.maxforce = 0.1;
-    this.maxspeed = 4;
-    this.minspeed = 0.25;
-    this.maxhealth = 3;
-
-    // This indicates how well it is doing
-    this.score = 0;
-
-    // Create an array of sensors
-    this.sensors = [];
-    for (let angle = 0; angle < TWO_PI; angle += sensorAngle) {
-      this.sensors.push(new Sensor(angle));
+    // Mutation
+    this.dna[0] = dna[0];
+    if (random(1) < mr) {
+      this.dna[0] += random(-0.1, 0.1);
     }
-
-    // If a brain is passed via constructor copy it
-    if (brain) {
-      this.brain = brain.copy();
-      this.brain.mutate(mutate);
-      // Otherwise make a new brain
-    } else {
-      // inputs are all the sensors plus position and velocity info
-      let inputs = this.sensors.length + 6;
-      // Arbitrary hidden layer
-      // 2 outputs for x and y desired velocity
-      this.brain = new NeuralNetwork(inputs, 32, 2);
+    this.dna[1] = dna[1];
+    if (random(1) < mr) {
+      this.dna[1] += random(-0.1, 0.1);
     }
-
-    // Health keeps vehicl alive
-    this.health = 1;
+    this.dna[2] = dna[2];
+    if (random(1) < mr) {
+      this.dna[2] += random(-10, 10);
+    }
+    this.dna[3] = dna[3];
+    if (random(1) < mr) {
+      this.dna[3] += random(-10, 10);
+    }
   }
 
+  // Method to update location
+  this.update = function() {
 
-  // Called each time step
-  update() {
+    this.health -= 0.005;
+
     // Update velocity
     this.velocity.add(this.acceleration);
-    // Limit speed to max
+    // Limit speed
     this.velocity.limit(this.maxspeed);
-    // Keep speed at a minimum
-    if (this.velocity.mag() < this.minspeed) {
-      this.velocity.setMag(this.minspeed);
-    }
-    // Update position
     this.position.add(this.velocity);
-    // Reset acceleration to 0 each cycle
+    // Reset accelerationelertion to 0 each cycle
     this.acceleration.mult(0);
-
-    // Decrease health
-    this.health = constrain(this.health, 0, this.maxhealth);
-    this.health -= 0.005;
-    // Increase score
-    this.score += 1;
   }
 
-  // Return true if health is less than zero
-  // or if vehicle leaves the canvas
-  dead() {
-    return (this.health < 0 ||
-      this.position.x > width + this.r ||
-      this.position.x < -this.r ||
-      this.position.y > height + this.r ||
-      this.position.y < -this.r
-    );
-  }
-
-  // Make a copy of this vehicle according to probability
-  clone(prob) {
-    // Pick a random number
-    let r = random(1);
-    if (r < prob) {
-      // New vehicle with brain copy
-      return new Vehicle(this.brain);
-    }
-    // otherwise will return undefined
-  }
-
-  // Function to calculate all sensor readings
-  // And predict a "desired velocity"
-  think(food) {
-    // All sensors start with maximum length
-    for (let j = 0; j < this.sensors.length; j++) {
-      this.sensors[j].val = sensorLength;
-    }
-
-    for (let i = 0; i < food.length; i++) {
-      // Where is the food
-      let otherPosition = food[i];
-      // How far away?
-      let dist = p5.Vector.dist(this.position, otherPosition);
-      // Skip if it's too far away
-      if (dist > sensorLength) {
-        continue;
-      }
-
-      // What is vector pointint to food
-      let toFood = p5.Vector.sub(otherPosition, this.position);
-
-      // Check all the sensors
-      for (let j = 0; j < this.sensors.length; j++) {
-        // If the relative angle of the food is in between the range
-        let delta = this.sensors[j].dir.angleBetween(toFood);
-        if (delta < sensorAngle / 2) {
-          // Sensor value is the closest food
-          this.sensors[j].val = min(this.sensors[j].val, dist);
-        }
-      }
-    }
-
-    // Create inputs
-    let inputs = [];
-    // This is goofy but these 4 inputs are mapped to distance from edges
-    inputs[0] = constrain(map(this.position.x, foodBuffer, 0, 0, 1), 0, 1);
-    inputs[1] = constrain(map(this.position.y, foodBuffer, 0, 0, 1), 0, 1);
-    inputs[2] = constrain(map(this.position.x, width - foodBuffer, width, 0, 1), 0, 1);
-    inputs[3] = constrain(map(this.position.y, height - foodBuffer, height, 0, 1), 0, 1);
-    // These inputs are the current velocity vector
-    inputs[4] = this.velocity.x / this.maxspeed;
-    inputs[5] = this.velocity.y / this.maxspeed;
-    // All the sensor readings
-    for (let j = 0; j < this.sensors.length; j++) {
-      inputs[j + 6] = map(this.sensors[j].val, 0, sensorLength, 1, 0);
-    }
-
-    // Get two outputs
-    let outputs = this.brain.predict(inputs);
-    // Turn it into a desired velocity and apply steering formula
-    let desired = createVector(2 * outputs[0] - 1, 2 * outputs[1] - 1);
-    desired.mult(this.maxspeed);
-    // Craig Reynolds steering formula
-    let steer = p5.Vector.sub(desired, this.velocity);
-    steer.limit(this.maxforce);
-    // Apply the force
-    this.applyForce(steer);
-  }
-
-  // Check against array of food
-  eat(list) {
-    for (let i = list.length - 1; i >= 0; i--) {
-      // Calculate distance
-      let d = p5.Vector.dist(list[i], this.position);
-      // If vehicle is within food radius, eat it!
-      if (d < foodRadius) {
-        list.splice(i, 1);
-        // Add health when it eats food
-        this.health++;
-      }
-    }
-  }
-
-  // Add force to acceleration
-  applyForce(force) {
+  this.applyForce = function(force) {
+    // We could add mass here if we want A = F / M
     this.acceleration.add(force);
   }
 
-  display() {
-    // Color based on health
-    let green = color(0, 255, 255, 255);
-    let red = color(255, 0, 100, 100);
-    let col = lerpColor(red, green, this.health)
+  this.behaviors = function(good, bad) {
+    var steerG = this.eat(good, 0.2, this.dna[2]);
+    var steerB = this.eat(bad, -1, this.dna[3]);
 
-    push();
-    // Translate to vehicle position
-    translate(this.position.x, this.position.y);
+    steerG.mult(this.dna[0]);
+    steerB.mult(this.dna[1]);
 
-    // Draw lines for all the activated sensors
-    if (debug.checked()) {
-      for (let i = 0; i < this.sensors.length; i++) {
-        let val = this.sensors[i].val;
-        if (val > 0) {
-          stroke(col);
-          strokeWeight(map(val, 0, sensorLength, 4, 0));
-          let position = this.sensors[i].dir;
-          line(0, 0, position.x * val, position.y * val);
+    this.applyForce(steerG);
+    this.applyForce(steerB);
+  }
+
+  this.clone = function() {
+    if (random(1) < 0.002) {
+      return new Vehicle(this.position.x, this.position.y, this.dna);
+    } else {
+      return null;
+    }
+  }
+
+  this.eat = function(list, nutrition, perception) {
+    var record = Infinity;
+    var closest = null;
+    for (var i = list.length - 1; i >= 0; i--) {
+      var d = this.position.dist(list[i]);
+
+      if (d < this.maxspeed) {
+        list.splice(i, 1);
+        this.health += nutrition;
+      } else {
+        if (d < record && d < perception) {
+          record = d;
+          closest = list[i];
         }
       }
-      // Display score next to each vehicle
-      noStroke();
-      fill(255, 200);
-      text(int(this.score), 10, 0);
     }
+
+    // This is the moment of eating!
+
+    if (closest != null) {
+      return this.seek(closest);
+    }
+
+    return createVector(0, 0);
+  }
+
+  // A method that calculates a steering force towards a target
+  // STEER = DESIRED MINUS VELOCITY
+  this.seek = function(target) {
+
+    var desired = p5.Vector.sub(target, this.position); // A vector pointing from the location to the target
+
+    // Scale to maximum speed
+    desired.setMag(this.maxspeed);
+
+    // Steering = Desired minus velocity
+    var steer = p5.Vector.sub(desired, this.velocity);
+    steer.limit(this.maxforce); // Limit to maximum steering force
+
+    return steer;
+    //this.applyForce(steer);
+  }
+
+  this.dead = function() {
+    return (this.health < 0)
+  }
+
+  this.display = function() {
     // Draw a triangle rotated in the direction of velocity
-    let theta = this.velocity.heading() + PI / 2;
-    rotate(theta);
-    // Draw the vehicle itself
+    var angle = this.velocity.heading() + PI / 2;
+
+    push();
+    translate(this.position.x, this.position.y);
+    rotate(angle);
+
+
+    if (debug.checked()) {
+      strokeWeight(3);
+      stroke(0, 255, 0);
+      noFill();
+      line(0, 0, 0, -this.dna[0] * 25);
+      strokeWeight(2);
+      ellipse(0, 0, this.dna[2] * 2);
+      stroke(255, 0, 0);
+      line(0, 0, 0, -this.dna[1] * 25);
+      ellipse(0, 0, this.dna[3] * 2);
+    }
+
+    var gr = color(0, 255, 0);
+    var rd = color(255, 0, 0);
+    var col = lerpColor(rd, gr, this.health);
+
     fill(col);
-    strokeWeight(1);
     stroke(col);
+    strokeWeight(1);
     beginShape();
     vertex(0, -this.r * 2);
     vertex(-this.r, this.r * 2);
     vertex(this.r, this.r * 2);
     endShape(CLOSE);
+
     pop();
   }
 
-  // Highlight with a grey bubble
-  highlight() {
-    fill(255, 255, 255, 50);
-    stroke(255);
-    ellipse(this.position.x, this.position.y, 32, 32);
+
+  this.boundaries = function() {
+    var d = 25;
+
+    var desired = null;
+
+    if (this.position.x < d) {
+      desired = createVector(this.maxspeed, this.velocity.y);
+    } else if (this.position.x > width - d) {
+      desired = createVector(-this.maxspeed, this.velocity.y);
+    }
+
+    if (this.position.y < d) {
+      desired = createVector(this.velocity.x, this.maxspeed);
+    } else if (this.position.y > height - d) {
+      desired = createVector(this.velocity.x, -this.maxspeed);
+    }
+
+    if (desired !== null) {
+      desired.normalize();
+      desired.mult(this.maxspeed);
+      var steer = p5.Vector.sub(desired, this.velocity);
+      steer.limit(this.maxforce);
+      this.applyForce(steer);
+    }
   }
 }
