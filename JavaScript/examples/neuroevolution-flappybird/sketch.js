@@ -4,6 +4,7 @@ let savedBirds = [];
 let pipes = [];
 let counter = 0;
 let slider;
+let Generation = 0;
 
 function keyPressed() {
   if (key === 'S') {
@@ -13,12 +14,14 @@ function keyPressed() {
 }
 
 function setup() {
-  createCanvas(640, 480);
+  createCanvas(1520,650 );
   tf.setBackend('cpu');
   slider = createSlider(1, 10, 1);
   for (let i = 0; i < TOTAL; i++) {
     birds[i] = new Bird();
   }
+
+  
 }
 
 function draw() {
@@ -56,12 +59,13 @@ function draw() {
     if (birds.length === 0) {
       counter = 0;
       nextGeneration();
+      Generation++;
       pipes = [];
     }
   }
 
   // All the drawing stuff
-  background(0);
+  background(69,179,224);
 
   for (let bird of birds) {
     bird.show();
@@ -70,4 +74,8 @@ function draw() {
   for (let pipe of pipes) {
     pipe.show();
   }
+
+  stroke(0);
+  textSize(32);
+  text('Generation='+Generation,0, 650);
 }
