@@ -14,9 +14,13 @@ function keyPressed() {
 }
 
 function setup() {
-  createCanvas(1520,650 );
+  let cnv = createCanvas(windowWidth/1.5,windowHeight/1.1 );
+  cnv.center('horizontal');
   tf.setBackend('cpu');
   slider = createSlider(1, 10, 1);
+  // slider.center();
+  
+  
   for (let i = 0; i < TOTAL; i++) {
     birds[i] = new Bird();
   }
@@ -25,6 +29,7 @@ function setup() {
 }
 
 function draw() {
+ 
   for (let n = 0; n < slider.value(); n++) {
     if (counter % 75 == 0) {
       pipes.push(new Pipe());
